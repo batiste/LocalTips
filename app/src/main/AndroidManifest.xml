@@ -19,6 +19,8 @@
             </intent-filter>
         </activity>
 
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyCVaqBSvQgcKcnkJ4knlT2ny4Tlv12w1bY"/>
+
         <provider
             android:name="android.support.v4.content.FileProvider"
             android:authorities="info.batiste.localtips.fileprovider"

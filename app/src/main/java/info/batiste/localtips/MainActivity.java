@@ -54,7 +54,6 @@ public class MainActivity extends AppCompatActivity {
 
 
         // Use GPS location data
-
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -90,13 +89,11 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("onRequestPermissions", "requestLocationUpdates");
 
                 } else {
-
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
                 }
                 return;
             }
-
             // other 'case' lines to check for other
             // permissions this app might request
         }
@@ -125,9 +122,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Geoloc stuff
-
-
-
     // Define a listener that responds to location updates
     LocationListener locationListener = new LocationListener() {
         public void onLocationChanged(Location location) {
