@@ -24,10 +24,12 @@ import android.graphics.Bitmap;
 import android.widget.ImageView;
 import android.os.Environment;
 import android.support.v4.content.FileProvider;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
 import android.net.Uri;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -54,8 +56,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton takephoto = (FloatingActionButton) findViewById(R.id.takephoto);
+        takephoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dispatchTakePictureIntent();
@@ -144,10 +146,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             //makeUseOfNewLocation(location);
             Log.d("onLocationChanged", location.toString());
 
-            if(map != null) {
+            if (map != null) {
                 Log.d("onLocationChanged", "Map ready");
                 LatLng latlng = new LatLng(location.getLatitude(), location.getLongitude());
-                map.moveCamera( CameraUpdateFactory.newLatLngZoom(latlng, 14.0f) );
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 14.0f));
             }
 
 
@@ -205,7 +207,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
 
             ImageView mImageView = (ImageView) findViewById(R.id.imageview);
-            if(data != null) {
+            if (data != null) {
                 // The default Android camera application returns a non-null intent
                 // only when passing back a thumbnail in the returned Intent.
                 // If you pass EXTRA_OUTPUT with a URI to write to, it will return a null intent
@@ -215,13 +217,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mImageView.setImageBitmap(imageBitmap);
             }
 
-            if(photoURI != null) {
+            if (photoURI != null) {
                 //mImageView.setImageBitmap(Bitmap.createBitmap(photoURI));
                 Log.d("mImageView.setImageURI", photoURI.toString());
                 mImageView.setImageURI(photoURI);
             }
 
-            if(currentPhoto != null) {
+            if (currentPhoto != null) {
                 setPic(currentPhoto);
             }
         }
@@ -243,7 +245,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         BitmapFactory.Options bmOptions = new BitmapFactory.Options();
         bmOptions.inJustDecodeBounds = true;
 
-        if(photoFile.exists())
+        if (photoFile.exists())
             Log.d("setPic", "Image exist");
         else {
             Log.e("setPic", "Image doesn't exist");
@@ -261,15 +263,52 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("setPic", "photoH:" + photoH);
 
         // Determine how much to scale down the image
-        int scaleFactor = photoW / targetW;
+        int scaleFactor = targetW / photoW;
 
         // Decode the image file into a Bitmap sized to fill the View
         bmOptions.inJustDecodeBounds = false;
-        bmOptions.inSampleSize = scaleFactor;
+        //bmOptions.inSampleSize = scaleFactor;
         bmOptions.inPurgeable = true;
 
         Bitmap bitmap = BitmapFactory.decodeFile(path, bmOptions);
-        mImageView.setImageBitmap(bitmap);
+
+        int activityHeight = this.getWindow().getDecorView().getHeight();
+        int height = (int)Math.max(activityHeight / 3.5, 250);
+
+        Bitmap newbitMap = scaleCropToFit(bitmap, targetW, height);
+
+        mImageView.setImageBitmap(newbitMap);
+    }
+
+    public static Bitmap scaleCropToFit(Bitmap original, int targetWidth, int targetHeight){
+        //Need to scale the image, keeping the aspect ration first
+        int width = original.getWidth();
+        int height = original.getHeight();
+
+        float widthScale = (float) targetWidth / (float) width;
+        float heightScale = (float) targetHeight / (float) height;
+        float scaledWidth;
+        float scaledHeight;
+
+        int startY = 0;
+        int startX = 0;
+
+        if (widthScale > heightScale) {
+            scaledWidth = targetWidth;
+            scaledHeight = height * widthScale;
+            //crop height by...
+            startY = (int) ((scaledHeight - targetHeight) / 2);
+        } else {
+            scaledHeight = targetHeight;
+            scaledWidth = width * heightScale;
+            //crop width by..
+            startX = (int) ((scaledWidth - targetWidth) / 2);
+        }
+
+        Bitmap scaledBitmap = Bitmap.createScaledBitmap(original, (int) scaledWidth, (int) scaledHeight, true);
+
+        Bitmap resizedBitmap = Bitmap.createBitmap(scaledBitmap, startX, startY, targetWidth, targetHeight);
+        return resizedBitmap;
     }
 
     private File createImageFile() throws IOException {
@@ -289,9 +328,5 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         return image;
     }
-
-
-
-
 
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/content_main"
@@ -8,23 +8,59 @@
     android:orientation="vertical"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context="info.batiste.localtips.MainActivity"
-    tools:showIn="@layout/activity_main"
-    android:padding="@dimen/activity_horizontal_margin">
+    tools:showIn="@layout/activity_main">
 
-    <ImageView
-        android:id="@+id/imageview"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-    <EditText
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="Why is this a good tip?"
+                android:padding="@dimen/cast_expanded_controller_control_button_margin"/>
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"/>
+
+        <ImageView
+            android:id="@+id/imageview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"/>
+
+        <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+            android:name="com.google.android.gms.maps.MapFragment"
+            android:id="@+id/map"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/takephoto"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:hint="Why is this a good tip?"/>
+        android:layout_margin="@dimen/fab_margin"
+        app:srcCompat="@drawable/ic_add_a_photo_black_24dp"
+        android:tint="?android:attr/textColorPrimaryInverse"
+        app:backgroundTint="@color/colorPrimary"
+        app:layout_anchor="@id/imageview"
+        app:layout_anchorGravity="bottom|end" />
 
-    <fragment xmlns:android="http://schemas.android.com/apk/res/android"
-        android:name="com.google.android.gms.maps.MapFragment"
-        android:id="@+id/map"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
 
-</LinearLayout>
+</android.support.design.widget.CoordinatorLayout>
