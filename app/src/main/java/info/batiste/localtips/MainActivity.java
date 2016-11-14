@@ -30,9 +30,22 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import android.net.Uri;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+
+    public GoogleMap map = null;
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        Log.d("onMapReady", "Ready");
+        map = googleMap;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
+        MapFragment map = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+        map.getMapAsync(this);
 
         // Use GPS location data
         if (ContextCompat.checkSelfPermission(this,
@@ -128,6 +143,14 @@ public class MainActivity extends AppCompatActivity {
             // Called when a new location is found by the network location provider.
             //makeUseOfNewLocation(location);
             Log.d("onLocationChanged", location.toString());
+
+            if(map != null) {
+                Log.d("onLocationChanged", "Map ready");
+                LatLng latlng = new LatLng(location.getLatitude(), location.getLongitude());
+                map.moveCamera( CameraUpdateFactory.newLatLngZoom(latlng, 14.0f) );
+            }
+
+
         }
 
         public void onStatusChanged(String provider, int status, Bundle extras) {
