@@ -28,6 +28,8 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -63,6 +65,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
     Boolean canWriteExternal = false;
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
+    private Uri imageDownloadUrl;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -81,7 +84,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         setSupportActionBar(toolbar);
 
         storageRef = FirebaseStorage.getInstance().getReferenceFromUrl("gs://localtips-149515.appspot.com");
-        mAuth = FirebaseAuth.getInstance();
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -117,17 +120,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
                 newTip.description = text.getText().toString();
 
                 if(photoFile != null) {
-                    StorageReference imagesRef = storageRef.child("images").child(photoFile.getName());
-                    imagesRef.putFile(photoURI);
-                    imagesRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>()
-                    {
-                        @Override
-                        public void onSuccess(Uri downloadUrl)
-                        {
-                            // image public URL
-                            newTip.image = downloadUrl.toString();
-                        }
-                    });
+                    newTip.image = photoFile.getName();
                 }
 
                 if(latlng != null) {
@@ -137,14 +130,17 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
                 DatabaseReference newRef = mDatabase.child("tips").push();
                 newRef.setValue(newTip);
 
+                if(latlng != null) {
+                    GeoFire geoloc = new GeoFire(mDatabase.child("geolocation"));
+                    geoloc.setLocation(newRef.getKey(), new GeoLocation(latlng.latitude, latlng.longitude));
+                }
+
                 finish();
             }
         });
 
         MapFragment map = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         map.getMapAsync(this);
-
-        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         // Use GPS location data
         if (ContextCompat.checkSelfPermission(this,
@@ -163,17 +159,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
         }
 
-/*        final String permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
-        if (ContextCompat.checkSelfPermission(this, permission)
-                != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
-
-            } else {
-                ActivityCompat.requestPermissions(this, new String[]{permission}, PERMISSIONS_REQUEST_WRITE_EXTERNAL);
-            }
-        } else {
-
-        }*/
     }
 
     public final int PERMISSIONS_REQUEST_GPS = 18;
@@ -197,14 +182,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                }
-                return;
-            }
-            case PERMISSIONS_REQUEST_WRITE_EXTERNAL: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    canWriteExternal = true;
                 }
                 return;
             }
@@ -342,6 +319,10 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             Log.e("setPic", "Image doesn't exist");
             return;
         }
+
+        StorageReference imagesRef = storageRef.child("images").child(photoFile.getName());
+        Log.d("setPic", "imagesRef.putFile");
+        imagesRef.putFile(photoURI);
 
         String path = photoFile.getAbsolutePath();
         Log.e("setPic", path);

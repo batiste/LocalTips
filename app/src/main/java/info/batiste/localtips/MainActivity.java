@@ -21,6 +21,7 @@ import android.view.MenuItem;
 import android.content.Intent;
 import android.provider.MediaStore;
 import android.graphics.Bitmap;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.os.Environment;
 import android.support.v4.content.FileProvider;
@@ -32,16 +33,25 @@ import java.util.Date;
 
 import android.net.Uri;
 
+import com.firebase.geofire.GeoFire;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    public GoogleMap map = null;
+    public GoogleMap map;
+    public LatLng latlng;
+    public final int PERMISSIONS_REQUEST_GPS = 18;
+    private DatabaseReference mDatabase;
+    StorageReference storageRef = null;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -54,6 +64,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        MapFragment map = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+        map.getMapAsync(this);
+
         setSupportActionBar(toolbar);
 
         FloatingActionButton takephoto = (FloatingActionButton) findViewById(R.id.newtip);
@@ -65,13 +78,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-    }
+        storageRef = FirebaseStorage.getInstance().getReferenceFromUrl("gs://localtips-149515.appspot.com");
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
-    public final int PERMISSIONS_REQUEST_GPS = 18;
+        // Use GPS location data
+        if (ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                    PERMISSIONS_REQUEST_GPS);
+
+        } else {
+            // Acquire a reference to the system Location Manager
+            Log.d("onCreate", "requestLocationUpdates");
+            LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        }
+
     }
 
     @Override
@@ -95,5 +121,62 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         return super.onOptionsItemSelected(item);
     }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSIONS_REQUEST_GPS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    // Acquire a reference to the system Location Manager
+                    LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                    Log.d("onRequestPermissions", "requestLocationUpdates");
+
+                } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                }
+                return;
+            }
+        }
+    }
+
+    // Geoloc stuff
+    // Define a listener that responds to location updates
+    LocationListener locationListener = new LocationListener() {
+        public void onLocationChanged(Location location) {
+            // Called when a new location is found by the network location provider.
+            //makeUseOfNewLocation(location);
+            Log.d("onLocationChanged", location.toString());
+
+            if (map != null) {
+                Log.d("onLocationChanged", "Map ready");
+                latlng = new LatLng(location.getLatitude(), location.getLongitude());
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 20.0f));
+
+
+
+
+            }
+        }
+
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+            Log.d("Location", Integer.toString(status));
+            Log.d("Location", extras.toString());
+        }
+
+        public void onProviderEnabled(String provider) {
+            Log.d("onProviderEnabled", "1");
+        }
+
+        public void onProviderDisabled(String provider) {
+            Log.d("onProviderDisabled", "1");
+        }
+    };
 
 }

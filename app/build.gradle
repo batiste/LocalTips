@@ -30,6 +30,7 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.google.android.gms:play-services:9.6.0'
     compile 'com.google.android.gms:play-services-maps:9.6.0'
+    compile 'com.firebase:geofire-android:2.1.1'
 }
 
 apply plugin: 'com.google.gms.google-services'
