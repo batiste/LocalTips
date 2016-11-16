@@ -34,14 +34,14 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.IgnoreExtraProperties;
-import com.google.firebase.database.Query;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
@@ -50,27 +50,33 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import info.batiste.localtips.Tip;
-
 
 public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    public GoogleMap map = null;
+    GoogleMap map = null;
+    Marker marker = null;
     LatLng latlng = null;
-    private DatabaseReference mDatabase;
+    DatabaseReference mDatabase;
     EditText text = null;
     ImageView mImageView = null;
     StorageReference storageRef = null;
     File photoFile = null;
-    Boolean canWriteExternal = false;
-    private FirebaseAuth mAuth;
-    private FirebaseAuth.AuthStateListener mAuthListener;
-    private Uri imageDownloadUrl;
+    static final int REQUEST_IMAGE_CAPTURE = 1;
+    File currentPhoto;
+    Uri photoURI;
+    static final int PERMISSIONS_REQUEST_GPS = 18;
+
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d("onMapReady", "Ready");
         map = googleMap;
+        LatLng ZURICH = new LatLng(47.3769, 8.54169);
+        marker = map.addMarker(
+                new MarkerOptions()
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                        .position(ZURICH)
+        );
     }
 
     @Override
@@ -86,21 +92,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         storageRef = FirebaseStorage.getInstance().getReferenceFromUrl("gs://localtips-149515.appspot.com");
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
-                if (user != null) {
-                    // User is signed in
-                    Log.d("onAuthStateChanged", "onAuthStateChanged:signed_in:" + user.getUid());
-                } else {
-                    // User is signed out
-                    Log.d("onAuthStateChanged", "onAuthStateChanged:signed_out");
-                }
-                // ...
-            }
-        };
-
 
         FloatingActionButton takephoto = (FloatingActionButton) findViewById(R.id.takephoto);
         takephoto.setOnClickListener(new View.OnClickListener() {
@@ -114,28 +105,28 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         save.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // create
-                Log.d("SaveTip", "click");
-                final Tip newTip = new Tip();
-                newTip.description = text.getText().toString();
+            // create
+            Log.d("SaveTip", "click");
+            final Tip newTip = new Tip();
+            newTip.description = text.getText().toString();
 
-                if(photoFile != null) {
-                    newTip.image = photoFile.getName();
-                }
+            if(photoFile != null) {
+                newTip.image = photoFile.getName();
+            }
 
-                if(latlng != null) {
-                    newTip.lat = latlng.latitude;
-                    newTip.lng = latlng.longitude;
-                }
-                DatabaseReference newRef = mDatabase.child("tips").push();
-                newRef.setValue(newTip);
+            if(latlng != null) {
+                newTip.lat = latlng.latitude;
+                newTip.lng = latlng.longitude;
+            }
+            DatabaseReference newRef = mDatabase.child("tips").push();
+            newRef.setValue(newTip);
 
-                if(latlng != null) {
-                    GeoFire geoloc = new GeoFire(mDatabase.child("geolocation"));
-                    geoloc.setLocation(newRef.getKey(), new GeoLocation(latlng.latitude, latlng.longitude));
-                }
+            if(latlng != null) {
+                GeoFire geoloc = new GeoFire(mDatabase.child("geolocation"));
+                geoloc.setLocation(newRef.getKey(), new GeoLocation(latlng.latitude, latlng.longitude));
+            }
 
-                finish();
+            finish();
             }
         });
 
@@ -160,9 +151,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         }
 
     }
-
-    public final int PERMISSIONS_REQUEST_GPS = 18;
-    public final int PERMISSIONS_REQUEST_WRITE_EXTERNAL = 19;
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
@@ -221,7 +209,8 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             if (map != null) {
                 Log.d("onLocationChanged", "Map ready");
                 latlng = new LatLng(location.getLatitude(), location.getLongitude());
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 14.0f));
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 19.0f));
+                marker.setPosition(latlng);
             }
         }
 
@@ -238,10 +227,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             Log.d("onProviderDisabled", "1");
         }
     };
-
-    static final int REQUEST_IMAGE_CAPTURE = 1;
-    File currentPhoto;
-    Uri photoURI;
 
     private void dispatchTakePictureIntent() {
         Log.d("PictureIntent", "start");
@@ -296,8 +281,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             }
         }
     }
-
-    String mCurrentPhotoPath;
 
     private void setPic(File photoFile) {
         // Get the dimensions of the View

@@ -31,6 +31,7 @@
         android:layout_margin="@dimen/fab_margin"
         app:srcCompat="@drawable/ic_add_a_photo_black_24dp"
         android:tint="?android:attr/textColorPrimaryInverse"
-        app:backgroundTint="@color/colorPrimary" />
+        app:backgroundTint="@color/colorPrimary"
+        android:layout_marginBottom="@dimen/activity_horizontal_margin" />
 
 </android.support.design.widget.CoordinatorLayout>

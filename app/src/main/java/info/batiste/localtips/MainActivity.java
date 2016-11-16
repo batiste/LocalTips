@@ -34,11 +34,18 @@ import java.util.Date;
 import android.net.Uri;
 
 import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.GeoQuery;
+import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
@@ -47,16 +54,24 @@ import com.google.firebase.storage.StorageReference;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    public GoogleMap map;
-    public LatLng latlng;
-    public final int PERMISSIONS_REQUEST_GPS = 18;
-    private DatabaseReference mDatabase;
+    GoogleMap map;
+    Marker marker;
+    LatLng latlng;
+    GeoQuery geoQuery;
+    static final int PERMISSIONS_REQUEST_GPS = 18;
+    DatabaseReference mDatabase;
     StorageReference storageRef = null;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d("onMapReady", "Ready");
         map = googleMap;
+        LatLng ZURICH = new LatLng(47.3769, 8.54169);
+        marker = map.addMarker(
+                new MarkerOptions()
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                        .position(ZURICH)
+        );
     }
 
     @Override
@@ -157,12 +172,40 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (map != null) {
                 Log.d("onLocationChanged", "Map ready");
                 latlng = new LatLng(location.getLatitude(), location.getLongitude());
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 20.0f));
-
-
-
-
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 19.0f));
             }
+
+            // GeoFire
+            GeoFire geoloc = new GeoFire(mDatabase.child("geolocation"));
+            geoQuery = geoloc.queryAtLocation(new GeoLocation(latlng.latitude, latlng.longitude), 0.6); // km
+            geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+                @Override
+                public void onKeyEntered(String key, GeoLocation location) {
+                    map.addMarker(
+                            new MarkerOptions()
+                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                                    .position(latlng));
+
+                    System.out.println(
+                            String.format("Key %s entered the search area at [%f,%f]", key, location.latitude, location.longitude));
+                }
+                @Override
+                public void onKeyExited(String key) {
+                    System.out.println(String.format("Key %s is no longer in the search area", key));
+                }
+                @Override
+                public void onGeoQueryError(DatabaseError error) {
+                    System.err.println("There was an error with this query: " + error);
+                }
+                @Override
+                public void onGeoQueryReady() {
+                    System.out.println("All initial data has been loaded and events have been fired!");
+                }
+                @Override
+                public void onKeyMoved(String key, GeoLocation location) {
+                    System.out.println(String.format("Key %s moved within the search area to [%f,%f]", key, location.latitude, location.longitude));
+                }
+            });
         }
 
         public void onStatusChanged(String provider, int status, Bundle extras) {
