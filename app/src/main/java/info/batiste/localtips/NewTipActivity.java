@@ -13,6 +13,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -24,6 +25,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageView;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -31,15 +33,36 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.IgnoreExtraProperties;
+import com.google.firebase.database.Query;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import info.batiste.localtips.Tip;
+
+
 public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     public GoogleMap map = null;
+    LatLng latlng = null;
+    private DatabaseReference mDatabase;
+    EditText text = null;
+    ImageView mImageView = null;
+    StorageReference storageRef = null;
+    File photoFile = null;
+    Boolean canWriteExternal = false;
+    private FirebaseAuth mAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -52,21 +75,76 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_new_tip);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        text = (EditText) findViewById(R.id.description);
+        mImageView = (ImageView) findViewById(R.id.imageview);
+
         setSupportActionBar(toolbar);
+
+        storageRef = FirebaseStorage.getInstance().getReferenceFromUrl("gs://localtips-149515.appspot.com");
+        mAuth = FirebaseAuth.getInstance();
+
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    // User is signed in
+                    Log.d("onAuthStateChanged", "onAuthStateChanged:signed_in:" + user.getUid());
+                } else {
+                    // User is signed out
+                    Log.d("onAuthStateChanged", "onAuthStateChanged:signed_out");
+                }
+                // ...
+            }
+        };
+
 
         FloatingActionButton takephoto = (FloatingActionButton) findViewById(R.id.takephoto);
         takephoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dispatchTakePictureIntent();
-                //Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                //        .setAction("Action", null).show();
             }
         });
 
+        FloatingActionButton save = (FloatingActionButton) findViewById(R.id.savetip);
+        save.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // create
+                Log.d("SaveTip", "click");
+                final Tip newTip = new Tip();
+                newTip.description = text.getText().toString();
+
+                if(photoFile != null) {
+                    StorageReference imagesRef = storageRef.child("images").child(photoFile.getName());
+                    imagesRef.putFile(photoURI);
+                    imagesRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>()
+                    {
+                        @Override
+                        public void onSuccess(Uri downloadUrl)
+                        {
+                            // image public URL
+                            newTip.image = downloadUrl.toString();
+                        }
+                    });
+                }
+
+                if(latlng != null) {
+                    newTip.lat = latlng.latitude;
+                    newTip.lng = latlng.longitude;
+                }
+                DatabaseReference newRef = mDatabase.child("tips").push();
+                newRef.setValue(newTip);
+
+                finish();
+            }
+        });
 
         MapFragment map = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         map.getMapAsync(this);
+
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         // Use GPS location data
         if (ContextCompat.checkSelfPermission(this,
@@ -84,9 +162,22 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
         }
+
+/*        final String permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+        if (ContextCompat.checkSelfPermission(this, permission)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{permission}, PERMISSIONS_REQUEST_WRITE_EXTERNAL);
+            }
+        } else {
+
+        }*/
     }
 
     public final int PERMISSIONS_REQUEST_GPS = 18;
+    public final int PERMISSIONS_REQUEST_WRITE_EXTERNAL = 19;
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
@@ -109,8 +200,14 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
                 }
                 return;
             }
-            // other 'case' lines to check for other
-            // permissions this app might request
+            case PERMISSIONS_REQUEST_WRITE_EXTERNAL: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    canWriteExternal = true;
+                }
+                return;
+            }
         }
     }
 
@@ -146,11 +243,9 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
 
             if (map != null) {
                 Log.d("onLocationChanged", "Map ready");
-                LatLng latlng = new LatLng(location.getLatitude(), location.getLongitude());
+                latlng = new LatLng(location.getLatitude(), location.getLongitude());
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 14.0f));
             }
-
-
         }
 
         public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -177,7 +272,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         // Ensure that there's a camera activity to handle the intent
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
             // Create the File where the photo should go
-            File photoFile = null;
             try {
                 photoFile = createImageFile();
                 currentPhoto = photoFile;
@@ -204,7 +298,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
 
-            ImageView mImageView = (ImageView) findViewById(R.id.imageview);
             if (data != null) {
                 // The default Android camera application returns a non-null intent
                 // only when passing back a thumbnail in the returned Intent.

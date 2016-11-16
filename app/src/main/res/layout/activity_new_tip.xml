@@ -24,7 +24,7 @@
     <include layout="@layout/content_new_tip" />
 
     <android.support.design.widget.FloatingActionButton
-        android:id="@+id/send"
+        android:id="@+id/savetip"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
