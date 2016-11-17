@@ -21,6 +21,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:minHeight="200px">
+
+            <ImageView android:id="@+id/tipimage" />
+            <TextView android:id="@+id/tiptext" />
+
+        </GridLayout>
+
     </LinearLayout>
 
 </android.support.design.widget.CoordinatorLayout>

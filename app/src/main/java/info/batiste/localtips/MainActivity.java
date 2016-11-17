@@ -25,6 +25,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.os.Environment;
 import android.support.v4.content.FileProvider;
+import java.util.Hashtable;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +33,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import android.net.Uri;
+import android.widget.TextView;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -45,14 +47,17 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.FirebaseException;
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
     GoogleMap map;
     Marker marker;
@@ -61,17 +66,39 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     static final int PERMISSIONS_REQUEST_GPS = 18;
     DatabaseReference mDatabase;
     StorageReference storageRef = null;
+    Hashtable <String, TipRepresentation> locations = null;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d("onMapReady", "Ready");
         map = googleMap;
         LatLng ZURICH = new LatLng(47.3769, 8.54169);
+        map.setOnMarkerClickListener(this);
         marker = map.addMarker(
                 new MarkerOptions()
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
                         .position(ZURICH)
         );
+    }
+
+    @Override
+    public boolean onMarkerClick(final Marker clickedMarker) {
+        Log.d("onMarkerClick", "click");
+        if (!marker.equals(clickedMarker))
+        {
+            String key = (String) clickedMarker.getTag();
+            if(locations.containsKey(key)) {
+                TipRepresentation repr = locations.get(key);
+                TextView text = (TextView) findViewById(R.id.tiptext);
+                if(repr.tip != null) {
+                    Log.d("onMarkerClick", repr.tip.description);
+                    text.setText(repr.tip.description);
+                } else {
+                    Log.d("onMarkerClick", "tip not loaded yet");
+                }
+            }
+        }
+        return true;
     }
 
     @Override
@@ -83,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         map.getMapAsync(this);
 
         setSupportActionBar(toolbar);
+        locations = new Hashtable <String, TipRepresentation> ();
 
         FloatingActionButton takephoto = (FloatingActionButton) findViewById(R.id.newtip);
         takephoto.setOnClickListener(new View.OnClickListener() {
@@ -181,16 +209,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
                 @Override
                 public void onKeyEntered(String key, GeoLocation location) {
-                    map.addMarker(
-                            new MarkerOptions()
-                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
-                                    .position(latlng));
 
                     System.out.println(
                             String.format("Key %s entered the search area at [%f,%f]", key, location.latitude, location.longitude));
+
+                    if(locations.containsKey(key)) {
+                        Log.d("locationListener", "Already there");
+                        return;
+                    }
+
+                    Marker mark = map.addMarker(
+                            new MarkerOptions()
+                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                                    .position(latlng));
+                    mark.setTag(key);
+
+                    TipRepresentation newRepr = new TipRepresentation(key, location, marker);
+                    locations.put(key, newRepr);
+
                 }
                 @Override
                 public void onKeyExited(String key) {
+                    if(locations.containsKey(key)) {
+                        locations.remove(key);
+                    }
                     System.out.println(String.format("Key %s is no longer in the search area", key));
                 }
                 @Override

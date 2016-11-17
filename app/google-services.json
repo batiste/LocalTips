@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "851243434384",
+    "firebase_url": "https://localtips-149515.firebaseio.com",
+    "project_id": "localtips-149515",
+    "storage_bucket": "localtips-149515.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:851243434384:android:91047ae37cd8f961",
+        "android_client_info": {
+          "package_name": "info.batiste.localtips"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "851243434384-2hmn2o0b1nm84bqer9efnki13qfauj7s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7RfEy9y5frYfcehF5O3WEs38fbs5SuMQ"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
