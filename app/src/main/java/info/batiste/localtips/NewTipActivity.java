@@ -82,6 +82,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setTitle("Add a new Tip");
         setContentView(R.layout.activity_new_tip);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         text = (EditText) findViewById(R.id.description);
