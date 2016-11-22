@@ -267,8 +267,10 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
                 // If you pass EXTRA_OUTPUT with a URI to write to, it will return a null intent
                 // and the picture is in the URI that you passed in.
                 Bundle extras = data.getExtras();
-                Bitmap imageBitmap = (Bitmap) extras.get("data");
-                mImageView.setImageBitmap(imageBitmap);
+                if(extras != null) {
+                    Bitmap imageBitmap = (Bitmap) extras.get("data");
+                    mImageView.setImageBitmap(imageBitmap);
+                }
             }
 
             if (photoURI != null) {

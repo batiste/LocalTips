@@ -33,6 +33,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import android.net.Uri;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import com.firebase.geofire.GeoFire;
@@ -67,6 +68,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     DatabaseReference mDatabase;
     StorageReference storageRef = null;
     Hashtable <String, TipRepresentation> locations = null;
+    TipListAdapter tiplist_adapter;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -78,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 new MarkerOptions()
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
                         .position(ZURICH)
+                        .zIndex(1000)
         );
     }
 
@@ -88,12 +91,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         {
             String key = (String) clickedMarker.getTag();
             if(locations.containsKey(key)) {
-                TipRepresentation repr = locations.get(key);
-                TextView text = (TextView) findViewById(R.id.tiptext);
-                if(repr.tip != null) {
-                    Log.d("onMarkerClick", repr.tip.description);
-                    text.setText(repr.tip.description);
-                } else {
+                TipRepresentation representation = locations.get(key);
+                if(representation.tip != null) {
+                    Log.d("onMarkerClick", representation.tip.description);
+                    } else {
                     Log.d("onMarkerClick", "tip not loaded yet");
                 }
             }
@@ -124,6 +125,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         storageRef = FirebaseStorage.getInstance().getReferenceFromUrl("gs://localtips-149515.appspot.com");
         mDatabase = FirebaseDatabase.getInstance().getReference();
+
+        tiplist_adapter = new TipListAdapter(locations);
+        ListView tiplist = (ListView) findViewById(R.id.tiplist);
+        tiplist.setAdapter(tiplist_adapter);
 
         // Use GPS location data
         if (ContextCompat.checkSelfPermission(this,
@@ -202,8 +207,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d("onLocationChanged", "Map ready");
                 latlng = new LatLng(location.getLatitude(), location.getLongitude());
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 19.0f));
+                marker.setPosition(latlng);
+            } else {
+                return;
             }
 
+            if(geoQuery == null) {
+                // GeoFire
+                setupGeoQuery();
+            } else {
+                geoQuery.setCenter(new GeoLocation(latlng.latitude, latlng.longitude));
+            }
+        }
+
+        public void setupGeoQuery() {
             // GeoFire
             GeoFire geoloc = new GeoFire(mDatabase.child("geolocation"));
             geoQuery = geoloc.queryAtLocation(new GeoLocation(latlng.latitude, latlng.longitude), 0.6); // km
@@ -225,14 +242,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     .position(latlng));
                     mark.setTag(key);
 
-                    TipRepresentation newRepr = new TipRepresentation(key, location, marker);
+                    TipRepresentation newRepr = new TipRepresentation(key, location, mark);
                     locations.put(key, newRepr);
+                    tiplist_adapter.updateData(locations);
 
                 }
                 @Override
                 public void onKeyExited(String key) {
+                    // this will never be called as the object is destroyed
                     if(locations.containsKey(key)) {
+                        TipRepresentation tip = locations.get(key);
+                        tip.marker.remove();
                         locations.remove(key);
+                        tiplist_adapter.updateData(locations);
                     }
                     System.out.println(String.format("Key %s is no longer in the search area", key));
                 }
