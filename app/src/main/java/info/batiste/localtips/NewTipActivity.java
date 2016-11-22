@@ -346,6 +346,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
 
         StorageReference imagesRef = storageRef.child("images").child(photoFile.getName());
         Log.d("setPic", "imagesRef.putFile");
+
         imagesRef.putFile(photoURI);
 
         String path = photoFile.getAbsolutePath();

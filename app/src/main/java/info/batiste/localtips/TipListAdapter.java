@@ -64,6 +64,9 @@ public class TipListAdapter extends BaseAdapter {
         // Populate the data into the template view using the data object
         if(item.tip != null) {
             text.setText(item.tip.description);
+            if(item.bitmap != null) {
+                image.setImageBitmap(item.bitmap);
+            }
         } else {
             Log.d("getView", "item.tip is null?");
         }
