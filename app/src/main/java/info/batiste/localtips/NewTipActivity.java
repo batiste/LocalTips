@@ -19,14 +19,17 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -88,6 +91,20 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         text = (EditText) findViewById(R.id.description);
         mImageView = (ImageView) findViewById(R.id.imageview);
 
+        Spinner staticSpinner = (Spinner) findViewById(R.id.static_spinner);
+
+        // Create an ArrayAdapter using the string array and a default spinner
+        ArrayAdapter<CharSequence> staticAdapter = ArrayAdapter
+                .createFromResource(this, R.array.categories_array,
+                        android.R.layout.simple_spinner_item);
+
+        // Specify the layout to use when the list of choices appears
+        staticAdapter
+                .setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        // Apply the adapter to the spinner
+        staticSpinner.setAdapter(staticAdapter);
+
         setSupportActionBar(toolbar);
 
         storageRef = FirebaseStorage.getInstance().getReferenceFromUrl("gs://localtips-149515.appspot.com");
@@ -111,14 +128,35 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             final Tip newTip = new Tip();
             newTip.description = text.getText().toString();
 
+            if(newTip.description.length() < 12) {
+                AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
+                alertDialog.setTitle("Cannot save the tip");
+                alertDialog.setMessage("Provide at least 12 characters");
+                alertDialog.show();
+                return;
+            }
+
             if(photoFile != null) {
                 newTip.image = photoFile.getName();
+            } else {
+                AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
+                alertDialog.setTitle("Cannot save the tip");
+                alertDialog.setMessage("Please take a picture.");
+                alertDialog.show();
+                return;
             }
 
             if(latlng != null) {
                 newTip.lat = latlng.latitude;
                 newTip.lng = latlng.longitude;
+            } else {
+                AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
+                alertDialog.setTitle("Cannot save the tip");
+                alertDialog.setMessage("No geolocation found yet. Activate GPS and wait.");
+                alertDialog.show();
+                return;
             }
+
             DatabaseReference newRef = mDatabase.child("tips").push();
             newRef.setValue(newTip);
 

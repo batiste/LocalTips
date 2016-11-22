@@ -15,14 +15,20 @@ import java.util.HashMap;
  */
 
 
+interface TipLoadedListener {
+    void tipLoaded(TipRepresentation tip);
+}
+
+
 public class TipRepresentation implements ValueEventListener {
 
     DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();;
 
-    public TipRepresentation(String key, GeoLocation location, Marker marker) {
+    public TipRepresentation(String key, GeoLocation location, Marker marker, TipLoadedListener listener) {
         this.key = key;
         this.location = location;
         this.marker = marker;
+        this.listener = listener;
         DatabaseReference ref = mDatabase.child("tips").child(key);
         ref.addValueEventListener(this);
     }
@@ -37,6 +43,7 @@ public class TipRepresentation implements ValueEventListener {
                 (Double) tiphash.get("lat"),
                 (Double) tiphash.get("lng"),
                 (String) tiphash.get("image"));
+        listener.tipLoaded(this);
     }
     @Override
     public void onCancelled(DatabaseError firebaseError) {
@@ -47,5 +54,6 @@ public class TipRepresentation implements ValueEventListener {
     Marker marker;
     GeoLocation location;
     Tip tip;
+    TipLoadedListener listener;
 
 }

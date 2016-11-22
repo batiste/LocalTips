@@ -21,6 +21,7 @@ import android.view.MenuItem;
 import android.content.Intent;
 import android.provider.MediaStore;
 import android.graphics.Bitmap;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.os.Environment;
@@ -58,7 +59,8 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
+
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener, TipLoadedListener {
 
     GoogleMap map;
     Marker marker;
@@ -69,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     StorageReference storageRef = null;
     Hashtable <String, TipRepresentation> locations = null;
     TipListAdapter tiplist_adapter;
+    boolean firstCameraUpdate = true;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -93,8 +96,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if(locations.containsKey(key)) {
                 TipRepresentation representation = locations.get(key);
                 if(representation.tip != null) {
+                    latlng = new LatLng(representation.location.latitude, representation.location.longitude);
+                    map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
                     Log.d("onMarkerClick", representation.tip.description);
-                    } else {
+                } else {
                     Log.d("onMarkerClick", "tip not loaded yet");
                 }
             }
@@ -108,8 +113,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setTitle("Tips around you");
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        MapFragment map = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
-        map.getMapAsync(this);
+        MapFragment fragmentmap = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+        fragmentmap.getMapAsync(this);
 
         setSupportActionBar(toolbar);
         locations = new Hashtable <String, TipRepresentation> ();
@@ -118,8 +123,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         takephoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent i = new Intent(getBaseContext(), NewTipActivity.class);
-                startActivity(i);
+            Intent i = new Intent(getBaseContext(), NewTipActivity.class);
+            startActivity(i);
             }
         });
 
@@ -129,6 +134,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         tiplist_adapter = new TipListAdapter(locations);
         ListView tiplist = (ListView) findViewById(R.id.tiplist);
         tiplist.setAdapter(tiplist_adapter);
+
+        tiplist.setOnItemClickListener(new AdapterView.OnItemClickListener()
+        {
+            @Override
+            public void onItemClick(AdapterView<?> arg0, View arg1, int position, long arg3)
+            {
+                TipRepresentation tip = tiplist_adapter.getItem(position);
+                latlng = new LatLng(tip.location.latitude, tip.location.longitude);
+                map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
+            }
+        });
 
         // Use GPS location data
         if (ContextCompat.checkSelfPermission(this,
@@ -154,6 +170,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
+    }
+
+    @Override
+    public void tipLoaded(TipRepresentation tip) {
+        tiplist_adapter.updateData(locations);
     }
 
     @Override
@@ -206,7 +227,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (map != null) {
                 Log.d("onLocationChanged", "Map ready");
                 latlng = new LatLng(location.getLatitude(), location.getLongitude());
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 19.0f));
+                if(firstCameraUpdate) {
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latlng, 19.0f));
+                } else {
+                    map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
+                }
                 marker.setPosition(latlng);
             } else {
                 return;
@@ -236,13 +261,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         return;
                     }
 
+                    LatLng position = new LatLng(location.latitude, location.longitude);
+
                     Marker mark = map.addMarker(
                             new MarkerOptions()
                                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
-                                    .position(latlng));
+                                    .position(position));
                     mark.setTag(key);
 
-                    TipRepresentation newRepr = new TipRepresentation(key, location, mark);
+                    TipRepresentation newRepr = new TipRepresentation(key, location, mark, MainActivity.this);
                     locations.put(key, newRepr);
                     tiplist_adapter.updateData(locations);
 
