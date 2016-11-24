@@ -48,6 +48,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -68,6 +69,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
     File currentPhoto;
     Uri photoURI;
     static final int PERMISSIONS_REQUEST_GPS = 18;
+    Boolean firstCameraUpdate = true;
 
 
     @Override
@@ -77,7 +79,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         LatLng ZURICH = new LatLng(47.3769, 8.54169);
         marker = map.addMarker(
                 new MarkerOptions()
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker_us))
                         .position(ZURICH)
         );
     }
@@ -110,7 +112,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         storageRef = FirebaseStorage.getInstance().getReferenceFromUrl("gs://localtips-149515.appspot.com");
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
-
         FloatingActionButton takephoto = (FloatingActionButton) findViewById(R.id.takephoto);
         takephoto.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -119,53 +120,58 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             }
         });
 
+        final Spinner spinner = (Spinner) findViewById(R.id.static_spinner);
+
         FloatingActionButton save = (FloatingActionButton) findViewById(R.id.savetip);
         save.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-            // create
-            Log.d("SaveTip", "click");
-            final Tip newTip = new Tip();
-            newTip.description = text.getText().toString();
+                // create
+                Log.d("SaveTip", "click");
+                final Tip newTip = new Tip();
+                newTip.description = text.getText().toString();
+                newTip.category = spinner.getSelectedItem().toString();
+                newTip.creationDate = System.currentTimeMillis();
 
-            if(newTip.description.length() < 12) {
-                AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
-                alertDialog.setTitle("Cannot save the tip");
-                alertDialog.setMessage("Provide at least 12 characters");
-                alertDialog.show();
-                return;
-            }
+                if(newTip.description.length() < 12) {
+                    AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
+                    alertDialog.setTitle("Cannot save the tip");
+                    alertDialog.setMessage("Provide at least 12 characters");
+                    alertDialog.show();
+                    return;
+                }
 
-            if(photoFile != null) {
-                newTip.image = photoFile.getName();
-            } else {
-                AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
-                alertDialog.setTitle("Cannot save the tip");
-                alertDialog.setMessage("Please take a picture.");
-                alertDialog.show();
-                return;
-            }
+                if(photoFile != null) {
+                    newTip.image = photoFile.getName();
+                    uploadThumbnails();
+                } else {
+                    AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
+                    alertDialog.setTitle("Cannot save the tip");
+                    alertDialog.setMessage("Please take a picture.");
+                    alertDialog.show();
+                    return;
+                }
 
-            if(latlng != null) {
-                newTip.lat = latlng.latitude;
-                newTip.lng = latlng.longitude;
-            } else {
-                AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
-                alertDialog.setTitle("Cannot save the tip");
-                alertDialog.setMessage("No geolocation found yet. Activate GPS and wait.");
-                alertDialog.show();
-                return;
-            }
+                if(latlng != null) {
+                    newTip.lat = latlng.latitude;
+                    newTip.lng = latlng.longitude;
+                } else {
+                    AlertDialog alertDialog = new AlertDialog.Builder(NewTipActivity.this).create();
+                    alertDialog.setTitle("Cannot save the tip");
+                    alertDialog.setMessage("No geolocation found yet. Activate GPS and wait.");
+                    alertDialog.show();
+                    return;
+                }
 
-            DatabaseReference newRef = mDatabase.child("tips").push();
-            newRef.setValue(newTip);
+                DatabaseReference newRef = mDatabase.child("tips").push();
+                newRef.setValue(newTip);
 
-            if(latlng != null) {
-                GeoFire geoloc = new GeoFire(mDatabase.child("geolocation"));
-                geoloc.setLocation(newRef.getKey(), new GeoLocation(latlng.latitude, latlng.longitude));
-            }
+                if(latlng != null) {
+                    GeoFire geoloc = new GeoFire(mDatabase.child("geolocation"));
+                    geoloc.setLocation(newRef.getKey(), new GeoLocation(latlng.latitude, latlng.longitude));
+                }
 
-            finish();
+                finish();
             }
         });
 
@@ -248,7 +254,12 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             if (map != null) {
                 Log.d("onLocationChanged", "Map ready");
                 latlng = new LatLng(location.getLatitude(), location.getLongitude());
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 19.0f));
+                if(firstCameraUpdate) {
+                    firstCameraUpdate = false;
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 17.0f));
+                } else {
+                    map.moveCamera(CameraUpdateFactory.newLatLng(latlng));
+                }
                 marker.setPosition(latlng);
             }
         }
@@ -323,6 +334,31 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         }
     }
 
+    private void uploadThumbnails() {
+        if (photoFile.exists())
+            Log.d("uploadThumbnails", "Image exist");
+        else {
+            Log.e("uploadThumbnails", "Image doesn't exist");
+            return;
+        }
+
+        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+        bmOptions.inJustDecodeBounds = false;
+        Bitmap bitmap = BitmapFactory.decodeFile(photoFile.getAbsolutePath(), bmOptions);
+
+        StorageReference imagesRef = storageRef.child("images").child(photoFile.getName()+".120");
+        Bitmap small = scaleCropToFit(bitmap, 120, 120);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        small.compress(Bitmap.CompressFormat.JPEG, 90, baos);
+        imagesRef.putBytes(baos.toByteArray());
+
+        imagesRef = storageRef.child("images").child(photoFile.getName()+".800");
+        Bitmap big = scaleCropToFit(bitmap, 800, 800);
+        baos = new ByteArrayOutputStream();
+        big.compress(Bitmap.CompressFormat.JPEG, 90, baos);
+        imagesRef.putBytes(baos.toByteArray());
+    }
+
     private void setPic(File photoFile) {
         // Get the dimensions of the View
         ImageView mImageView = (ImageView) findViewById(R.id.imageview);
@@ -344,11 +380,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
             return;
         }
 
-        StorageReference imagesRef = storageRef.child("images").child(photoFile.getName());
-        Log.d("setPic", "imagesRef.putFile");
-
-        imagesRef.putFile(photoURI);
-
         String path = photoFile.getAbsolutePath();
         Log.e("setPic", path);
 
@@ -364,7 +395,6 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
 
         // Decode the image file into a Bitmap sized to fill the View
         bmOptions.inJustDecodeBounds = false;
-        //bmOptions.inSampleSize = scaleFactor;
         bmOptions.inPurgeable = true;
 
         Bitmap bitmap = BitmapFactory.decodeFile(path, bmOptions);
@@ -372,9 +402,7 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
         int activityHeight = this.getWindow().getDecorView().getHeight();
         int height = (int)Math.max(activityHeight / 3.5, 250);
 
-        Bitmap newbitMap = scaleCropToFit(bitmap, targetW, height);
-
-        mImageView.setImageBitmap(newbitMap);
+        mImageView.setImageBitmap(scaleCropToFit(bitmap, targetW, height));
     }
 
     public static Bitmap scaleCropToFit(Bitmap original, int targetWidth, int targetHeight){

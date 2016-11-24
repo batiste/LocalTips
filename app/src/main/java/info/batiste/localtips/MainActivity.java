@@ -72,6 +72,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     Hashtable <String, TipRepresentation> locations = null;
     TipListAdapter tiplist_adapter;
     boolean firstCameraUpdate = true;
+    TipRepresentation selectedTip;
+    Marker selectedMarker;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -81,9 +83,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         map.setOnMarkerClickListener(this);
         marker = map.addMarker(
                 new MarkerOptions()
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker_us))
                         .position(ZURICH)
-                        .zIndex(1000)
         );
     }
 
@@ -95,9 +96,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             String key = (String) clickedMarker.getTag();
             if(locations.containsKey(key)) {
                 TipRepresentation representation = locations.get(key);
+                if(selectedTip != null) {
+                    selectedTip.marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
+                }
+                selectedTip = representation;
                 if(representation.tip != null) {
-                    latlng = new LatLng(representation.location.latitude, representation.location.longitude);
-                    map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
+                    LatLng _latlng = new LatLng(representation.location.latitude, representation.location.longitude);
+                    map.animateCamera(CameraUpdateFactory.newLatLng(_latlng));
+                    selectedTip.marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
                     Log.d("onMarkerClick", representation.tip.description);
                 } else {
                     Log.d("onMarkerClick", "tip not loaded yet");
@@ -141,10 +147,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onItemClick(AdapterView<?> arg0, View arg1, int position, long arg3)
             {
                 TipRepresentation tip = tiplist_adapter.getItem(position);
-                latlng = new LatLng(tip.location.latitude, tip.location.longitude);
-                map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
+                if(selectedTip != null) {
+                    selectedTip.marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
+                }
+                selectedTip = tip;
+                selectedTip.marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                LatLng _latlng = new LatLng(tip.location.latitude, tip.location.longitude);
+                map.animateCamera(CameraUpdateFactory.newLatLng(_latlng));
             }
         });
+
+        FloatingActionButton center = (FloatingActionButton) findViewById(R.id.centermap);
+        center.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(latlng == null) {
+                    return;
+                }
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(latlng, 17.0f));
+            }
+        });
+
+        //center.setOnClickListener();
 
         // Use GPS location data
         if (ContextCompat.checkSelfPermission(this,
@@ -175,6 +199,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void tipLoaded(TipRepresentation tip) {
         tiplist_adapter.updateData(locations);
+        runOnUiThread(new Runnable() {
+            public void run() {
+                tiplist_adapter.notifyDataSetChanged();
+            }
+        });
     }
 
     @Override
@@ -223,25 +252,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             // Called when a new location is found by the network location provider.
             //makeUseOfNewLocation(location);
             Log.d("onLocationChanged", location.toString());
-
-            if (map != null) {
-                Log.d("onLocationChanged", "Map ready");
-                latlng = new LatLng(location.getLatitude(), location.getLongitude());
-                if(firstCameraUpdate) {
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latlng, 19.0f));
-                } else {
-                    map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
-                }
-                marker.setPosition(latlng);
-            } else {
-                return;
-            }
+            latlng = new LatLng(location.getLatitude(), location.getLongitude());
 
             if(geoQuery == null) {
                 // GeoFire
                 setupGeoQuery();
             } else {
                 geoQuery.setCenter(new GeoLocation(latlng.latitude, latlng.longitude));
+            }
+
+            if (map != null) {
+                Log.d("onLocationChanged", "Map ready");
+                marker.setPosition(latlng);
+                if(selectedTip != null) {
+                    return;
+                }
+                if(firstCameraUpdate) {
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latlng, 17.0f));
+                    firstCameraUpdate = false;
+                } else {
+                    map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
+                }
             }
         }
 

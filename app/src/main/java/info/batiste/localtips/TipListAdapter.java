@@ -29,7 +29,6 @@ public class TipListAdapter extends BaseAdapter {
     public void updateData(Hashtable<String, TipRepresentation> data) {
         mData  = data;
         mKeys = mData.keySet().toArray(new String[data.size()]);
-        notifyDataSetChanged();
     }
 
     @Override
@@ -60,10 +59,12 @@ public class TipListAdapter extends BaseAdapter {
         // Lookup view for data population
         ImageView image = (ImageView) convertView.findViewById(R.id.imageView);
         TextView text = (TextView) convertView.findViewById(R.id.textView);
+        TextView category = (TextView) convertView.findViewById(R.id.category);
 
         // Populate the data into the template view using the data object
         if(item.tip != null) {
             text.setText(item.tip.description);
+            category.setText(item.tip.category);
             if(item.bitmap != null) {
                 image.setImageBitmap(item.bitmap);
             }

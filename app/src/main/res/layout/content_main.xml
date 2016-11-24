@@ -19,7 +19,20 @@
             android:name="com.google.android.gms.maps.MapFragment"
             android:id="@+id/map"
             android:layout_width="match_parent"
-            android:layout_height="200sp" />
+            android:layout_height="200sp">
+
+            <android.support.design.widget.FloatingActionButton
+                android:id="@+id/centermap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_margin="@dimen/fab_margin"
+                app:fabSize="mini"
+                app:srcCompat="@drawable/ic_my_location_black_16dp"
+                android:tint="?android:attr/textColorPrimaryInverse"
+                app:backgroundTint="@color/colorPrimary" />
+
+        </fragment>
 
         <ListView
             android:id="@+id/tiplist"

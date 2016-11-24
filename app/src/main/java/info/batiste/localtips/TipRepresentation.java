@@ -48,22 +48,27 @@ public class TipRepresentation implements ValueEventListener {
         System.out.println("Got the data");
         HashMap tiphash = (HashMap) snapshot.getValue();
         System.out.println(tiphash);
+
         this.tip = new Tip(
                 (String) tiphash.get("description"),
+                (String) tiphash.get("category"),
                 (Double) tiphash.get("lat"),
                 (Double) tiphash.get("lng"),
-                (String) tiphash.get("image"));
+                (String) tiphash.get("image"),
+                (Long) tiphash.get("creationDate"));
 
         listener.tipLoaded(this);
 
         if(tip.image != null && tip.image != "") {
-            StorageReference imageRef = storageRef.child("images").child(tip.image);
-            final long ONE_MEGABYTE = 1024 * 1024;
+            StorageReference imageRef = storageRef.child("images").child(tip.image + ".120");
+            final long ONE_MEGABYTE = 2 * 1024 * 1024;
             imageRef.getBytes(ONE_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
                 @Override
                 public void onSuccess(byte[] bytes) {
                     Log.d("Image loaded", tip.image);
-                    bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    bitmap = Bitmap.createScaledBitmap(
+                            BitmapFactory.decodeByteArray(bytes, 0, bytes.length)
+                            , 150, 150, true);
                     listener.tipLoaded(TipRepresentation.this);
                 }
             }).addOnFailureListener(new OnFailureListener() {
