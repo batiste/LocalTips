@@ -1,6 +1,7 @@
 package info.batiste.localtips;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
@@ -74,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean firstCameraUpdate = true;
     TipRepresentation selectedTip;
     Marker selectedMarker;
+    ProgressDialog progress;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -122,6 +124,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         MapFragment fragmentmap = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         fragmentmap.getMapAsync(this);
 
+        progress = new ProgressDialog(this);
+        progress.setTitle("Loading Location");
+        progress.setMessage("Waiting location...");
+        progress.setCancelable(false); // disable dismiss by tapping outside of the dialog
+        progress.show();
+
         setSupportActionBar(toolbar);
         locations = new Hashtable <String, TipRepresentation> ();
 
@@ -129,8 +137,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         takephoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-            Intent i = new Intent(getBaseContext(), NewTipActivity.class);
-            startActivity(i);
+                Intent intent = new Intent(getBaseContext(), NewTipActivity.class);
+                Bundle b = new Bundle();
+                b.putParcelable("EXTRA_LATLNG", latlng);
+                intent.putExtras(b);
+                startActivity(intent);
             }
         });
 
@@ -268,7 +279,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     return;
                 }
                 if(firstCameraUpdate) {
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latlng, 17.0f));
+                    progress.hide();
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 17.0f));
                     firstCameraUpdate = false;
                 } else {
                     map.animateCamera(CameraUpdateFactory.newLatLng(latlng));

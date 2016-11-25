@@ -76,22 +76,31 @@ public class NewTipActivity extends AppCompatActivity implements OnMapReadyCallb
     public void onMapReady(GoogleMap googleMap) {
         Log.d("onMapReady", "Ready");
         map = googleMap;
-        LatLng ZURICH = new LatLng(47.3769, 8.54169);
+        if(latlng == null) {
+            latlng = new LatLng(47.3769, 8.54169); // Zurich
+        }
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 17.0f));
         marker = map.addMarker(
                 new MarkerOptions()
                         .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker_us))
-                        .position(ZURICH)
+                        .position(latlng)
         );
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setTitle("Add a new Tip");
         setContentView(R.layout.activity_new_tip);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         text = (EditText) findViewById(R.id.description);
         mImageView = (ImageView) findViewById(R.id.imageview);
+
+        Bundle b = this.getIntent().getExtras();
+        if (b != null) {
+            latlng = (LatLng) b.getParcelable("EXTRA_LATLNG");
+        }
 
         Spinner staticSpinner = (Spinner) findViewById(R.id.static_spinner);
 

@@ -65,9 +65,7 @@ public class TipListAdapter extends BaseAdapter {
         if(item.tip != null) {
             text.setText(item.tip.description);
             category.setText(item.tip.category);
-            if(item.bitmap != null) {
-                image.setImageBitmap(item.bitmap);
-            }
+            image.setImageBitmap(item.bitmap);
         } else {
             Log.d("getView", "item.tip is null?");
         }

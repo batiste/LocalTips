@@ -46,6 +46,10 @@
         <activity
             android:name=".NewTipActivity"
             android:label="@string/title_activity_new_tip"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name=".TipViewActivity"
+            android:label="@string/title_activity_tip_view"
             android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>
 

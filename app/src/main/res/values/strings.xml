@@ -7,4 +7,5 @@
         <item>Drinks</item>
         <item>Culture</item>
     </string-array>
+    <string name="title_activity_tip_view">TipViewActivity</string>
 </resources>
